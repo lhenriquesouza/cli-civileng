@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project
+*.xlsx
+*.pdf
+data/rules/*.json
+projects/
+config.yaml
+
+# Keep example config
+!config.yaml.example
+
+# Reports
+*.html
+reports/
+
+# Example data (large binaries)
+example/
+
+# Hermes local plan files
+.hermes/

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relatório de Conformidade — {{ project_name }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f5f5f5; color: #333; padding: 40px; }
+  .container { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); padding: 40px; }
+  h1 { font-size: 24px; color: #1a1a2e; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 24px; }
+  .summary { display: flex; gap: 16px; margin-bottom: 32px; flex-wrap: wrap; }
+  .summary-card { flex: 1; min-width: 120px; padding: 20px; border-radius: 10px; text-align: center; }
+  .summary-card.passed { background: #e8f5e9; color: #2e7d32; }
+  .summary-card.failed { background: #ffebee; color: #c62828; }
+  .summary-card.unchecked { background: #fff3e0; color: #e65100; }
+  .summary-card.total { background: #e3f2fd; color: #1565c0; }
+  .summary-card .number { font-size: 36px; font-weight: 700; }
+  .summary-card .label { font-size: 13px; margin-top: 4px; text-transform: uppercase; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: #fafafa; padding: 12px 14px; text-align: left; font-size: 12px; text-transform: uppercase; color: #888; border-bottom: 2px solid #eee; }
+  td { padding: 14px; border-bottom: 1px solid #f0f0f0; font-size: 14px; }
+  tr:hover { background: #fafafa; }
+  .status-pass { color: #2e7d32; font-weight: 600; }
+  .status-fail { color: #c62828; font-weight: 600; }
+  .status-warn { color: #e65100; font-weight: 600; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; }
+  .badge-pass { background: #e8f5e9; color: #2e7d32; }
+  .badge-fail { background: #ffebee; color: #c62828; }
+  .badge-warn { background: #fff3e0; color: #e65100; }
+  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; text-align: center; }
+  .suggestion { font-size: 13px; color: #666; margin-top: 4px; font-style: italic; }
+  @media print { body { background: #fff; padding: 0; } .container { box-shadow: none; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📋 Relatório de Conformidade</h1>
+  <p class="subtitle">{{ project_name }} • {{ rule_set_name }} • {{ date }}</p>
+
+  <div class="summary">
+    <div class="summary-card passed">
+      <div class="number">{{ summary.passed }}</div>
+      <div class="label">✅ Conforme</div>
+    </div>
+    <div class="summary-card failed">
+      <div class="number">{{ summary.failed }}</div>
+      <div class="label">❌ Não conforme</div>
+    </div>
+    <div class="summary-card unchecked">
+      <div class="number">{{ summary.unchecked }}</div>
+      <div class="label">⚠️ Não verificado</div>
+    </div>
+    <div class="summary-card total">
+      <div class="number">{{ summary.total }}</div>
+      <div class="label">Total de regras</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Regra</th>
+        <th>Exigido</th>
+        <th>Encontrado</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in results %}
+      <tr>
+        <td>
+          <strong>{{ r.name }}</strong>
+          <div class="suggestion">{{ r.description }}</div>
+          {% if r.suggestion %}
+          <div class="suggestion" style="color: #c62828; font-style: normal;">💡 {{ r.suggestion }}</div>
+          {% endif %}
+        </td>
+        <td>{{ r.expected_value }}</td>
+        <td>{{ r.actual if r.actual is not none else '—' }}</td>
+        <td>
+          {% if r.passed %}
+          <span class="badge badge-pass">✅ Conforme</span>
+          {% elif r.actual is none %}
+          <span class="badge badge-warn">⚠️ Não verificado</span>
+          {% else %}
+          <span class="badge badge-fail">❌ Não conforme</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    CLI CivilEng v0.1.0 • Relatório gerado em {{ date }} • Este relatório é uma ferramenta de apoio e não substitui a revisão técnica profissional.
+  </div>
+</div>
+</body>
+</html>
