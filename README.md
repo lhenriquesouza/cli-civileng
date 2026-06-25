@@ -4,38 +4,35 @@ Ferramenta CLI para verificação de conformidade de projetos de engenharia civi
 
 ## Instalação
 
-### One-liner (Linux/macOS)
+### Linux / macOS
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lhenriquesouza/cli-civileng/main/install.sh | bash
 ```
 
-O script instala em `~/.cli-civileng/`, cria um venv isolado, e adiciona o comando `cli-civileng` ao seu PATH.
+### Windows (PowerShell)
+
+```powershell
+irm https://raw.githubusercontent.com/lhenriquesouza/cli-civileng/main/install.ps1 | iex
+```
+
+O script instala em `~/.cli-civileng/` (ou `%USERPROFILE%\.cli-civileng` no Windows), cria um venv isolado, e adiciona o comando `cli-civileng` ao seu PATH.
 
 > 💡 **Dica de segurança:** Se preferir revisar antes de executar:
+>
+> **Linux/macOS:**
 > ```bash
 > curl -fsSL https://raw.githubusercontent.com/lhenriquesouza/cli-civileng/main/install.sh -o install.sh
 > less install.sh   # revise o código
 > bash install.sh
 > ```
-
-### Instalação manual
-
-```bash
-git clone https://github.com/lhenriquesouza/cli-civileng.git
-cd cli-civileng
-bash setup.sh
-source venv/bin/activate
-```
-
-### Windows
-
-```bat
-git clone https://github.com/lhenriquesouza/cli-civileng.git
-cd cli-civileng
-setup.bat
-venv\Scripts\activate.bat
-```
+>
+> **Windows:**
+> ```powershell
+> irm https://raw.githubusercontent.com/lhenriquesouza/cli-civileng/main/install.ps1 -OutFile install.ps1
+> notepad install.ps1   # revise o código
+> .\install.ps1
+> ```
 
 ### Configurar API Key
 
