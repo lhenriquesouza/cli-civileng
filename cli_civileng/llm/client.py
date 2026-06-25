@@ -1,11 +1,21 @@
 """LLM client for rule extraction from PDF text."""
 import json
+import logging
 from openai import OpenAI
 from cli_civileng.config import load_config
 
+logger = logging.getLogger(__name__)
 
-def get_client(config_path=None):
-    """Create an OpenAI-compatible client from config.yaml."""
+MAX_INPUT_CHARS = 12000
+MAX_OUTPUT_TOKENS = 4000
+DEFAULT_TEMPERATURE = 0.1
+
+
+def get_client(config_path: str | None = None) -> tuple[OpenAI, str]:
+    """Create an OpenAI-compatible client from config.yaml.
+
+    Returns (client, model_name) tuple.
+    """
     config = load_config(config_path)
     llm_config = config["llm"]
 
@@ -70,8 +80,30 @@ IMPORTANT: Extract every numeric rule you find. Do not skip any.
 Return ONLY the JSON object, no other text."""
 
 
-def extract_rules_from_text(text: str, config_path=None) -> dict:
-    """Send PDF text to LLM and get structured rules JSON back."""
+def _extract_json_from_response(content: str) -> str:
+    """Extract JSON payload from LLM response, handling markdown code fences."""
+    if "```json" in content:
+        parts = content.split("```json", 1)[1].split("```", 1)
+        return parts[0].strip()
+    if "```" in content:
+        parts = content.split("```", 1)[1].split("```", 1)
+        return parts[0].strip()
+    return content.strip()
+
+
+def extract_rules_from_text(text: str, config_path: str | None = None) -> dict:
+    """Send PDF text to LLM and get structured rules JSON back.
+
+    Args:
+        text: The extracted PDF text content.
+        config_path: Optional path to config.yaml.
+
+    Returns:
+        Parsed rules dictionary.
+
+    Raises:
+        ValueError: If the LLM response cannot be parsed as valid JSON.
+    """
     client, model = get_client(config_path)
 
     response = client.chat.completions.create(
@@ -80,18 +112,22 @@ def extract_rules_from_text(text: str, config_path=None) -> dict:
             {"role": "system", "content": EXTRACT_RULES_PROMPT},
             {
                 "role": "user",
-                "content": f"Extract all verifiable rules from this document:\n\n{text[:12000]}",
+                "content": f"Extract all verifiable rules from this document:\n\n{text[:MAX_INPUT_CHARS]}",
             },
         ],
-        temperature=0.1,
-        max_tokens=4000,
+        temperature=DEFAULT_TEMPERATURE,
+        max_tokens=MAX_OUTPUT_TOKENS,
     )
 
-    content = response.choices[0].message.content
-    # Extract JSON from response (may be wrapped in ```json)
-    if "```json" in content:
-        content = content.split("```json")[1].split("```")[0]
-    elif "```" in content:
-        content = content.split("```")[1].split("```")[0]
+    raw_content = response.choices[0].message.content
+    json_text = _extract_json_from_response(raw_content)
 
-    return json.loads(content)
+    try:
+        return json.loads(json_text)
+    except json.JSONDecodeError as e:
+        logger.error("Failed to parse LLM JSON response: %s", e)
+        logger.debug("Raw response (first 500 chars): %s", raw_content[:500])
+        raise ValueError(
+            f"LLM returned invalid JSON. Error: {e}. "
+            "Try running again or check the PDF text quality."
+        ) from e

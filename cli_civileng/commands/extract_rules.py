@@ -1,5 +1,6 @@
 """extract-rules: PDF de normas → JSON estruturado via LLM."""
 import json
+import logging
 from pathlib import Path
 from datetime import datetime
 
@@ -11,11 +12,42 @@ from rich.prompt import Prompt
 from cli_civileng.extractors.pdf_extractor import extract_text
 from cli_civileng.llm.client import extract_rules_from_text
 
+logger = logging.getLogger(__name__)
 console = Console()
 RULES_DIR = Path("data/rules")
 
 
-def extract_rules_command():
+def _sanitize_filename(name: str) -> str:
+    """Convert a name to a safe filename slug."""
+    replacements = {
+        "ç": "c", "ã": "a", "á": "a", "é": "e",
+        "í": "i", "ó": "o", "ú": "u", " ": "-",
+    }
+    result = name.lower()
+    for old, new in replacements.items():
+        result = result.replace(old, new)
+    return result
+
+
+def _git_add_and_commit(output_path: Path, rule_name: str, rule_type: str) -> None:
+    """Attempt to git-add and commit the generated rules file."""
+    try:
+        import git
+
+        repo = git.Repo(".", search_parent_directories=True)
+        repo.index.add([str(output_path)])
+        repo.index.commit(f"feat: add rules for {rule_name} ({rule_type})")
+        console.print("   📦 Versionado com git")
+    except git.InvalidGitRepositoryError:
+        console.print(
+            "   ⚠️  Diretório não é um repositório git — pulando versionamento"
+        )
+    except Exception as e:
+        logger.warning("Git versioning failed: %s", e)
+        console.print(f"   ⚠️  Erro ao versionar com git: {e}")
+
+
+def extract_rules_command() -> None:
     """Interactive guided extraction of rules from PDF."""
     console.print()
     console.print(
@@ -60,23 +92,14 @@ def extract_rules_command():
     console.print("\n🤖 Enviando para LLM extrair regras...")
     try:
         rules_json = extract_rules_from_text(text)
-    except Exception as e:
+    except (ValueError, ConnectionError, OSError) as e:
+        logger.error("LLM extraction failed: %s", e)
         console.print(f"[red]❌ Erro na LLM: {e}[/red]")
         return
 
     # Step 6: Save JSON
     RULES_DIR.mkdir(parents=True, exist_ok=True)
-    output_name = (
-        rule_name.lower()
-        .replace(" ", "-")
-        .replace("ç", "c")
-        .replace("ã", "a")
-        .replace("á", "a")
-        .replace("é", "e")
-        .replace("í", "i")
-        .replace("ó", "o")
-        .replace("ú", "u")
-    )
+    output_name = _sanitize_filename(rule_name)
     output_path = RULES_DIR / f"{output_name}.json"
 
     rules_json["name"] = rule_name
@@ -92,16 +115,6 @@ def extract_rules_command():
     console.print(f"   📊 {len(rules_json.get('rules', []))} regras extraídas")
 
     # Step 7: Git versioning
-    try:
-        import git
-
-        repo = git.Repo(".")
-        repo.index.add([str(output_path)])
-        repo.index.commit(f"feat: add rules for {rule_name} ({rule_type})")
-        console.print("   📦 Versionado com git")
-    except git.InvalidGitRepositoryError:
-        console.print(
-            "   ⚠️  Diretório não é um repositório git — pulando versionamento"
-        )
+    _git_add_and_commit(output_path, rule_name, rule_type)
 
     console.print()

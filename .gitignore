@@ -36,3 +36,9 @@ example/
 
 # Hermes local plan files
 .hermes/
+
+# Test artifacts
+.coverage
+.pytest_cache/
+htmlcov/
+

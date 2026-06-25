@@ -2,6 +2,8 @@
 import re
 from typing import Any
 
+PERCENT_MULTIPLIER = 100
+
 
 def parse_check(check_str: str) -> tuple[str, str, float]:
     """Parse a check string like 'area_permeavel_pct >= 20' into (var, op, value)."""
@@ -28,24 +30,25 @@ def evaluate_check(
     except (TypeError, ValueError):
         return False, None, f"Valor inválido para '{var_name}': {actual}"
 
-    if operator == ">=":
-        passed = actual >= expected
-    elif operator == "<=":
-        passed = actual <= expected
-    elif operator == ">":
-        passed = actual > expected
-    elif operator == "<":
-        passed = actual < expected
-    elif operator == "==":
-        passed = abs(actual - expected) < 0.01
-    else:
-        return False, actual, f"Operador desconhecido: {operator}"
+    match operator:
+        case ">=":
+            passed = actual >= expected
+        case "<=":
+            passed = actual <= expected
+        case ">":
+            passed = actual > expected
+        case "<":
+            passed = actual < expected
+        case "==":
+            passed = abs(actual - expected) < 0.01
+        case _:
+            return False, actual, f"Operador desconhecido: {operator}"
 
     if passed:
         msg = "✅ Conforme"
     else:
-        diff = abs(actual - expected)
         direction = "aumentar" if operator in (">=", ">") else "reduzir"
+        diff = abs(actual - expected)
         msg = f"❌ Não conforme — sugere-se {direction} em {diff:.2f}"
 
     return passed, actual, msg
@@ -56,7 +59,7 @@ def check_all(data: dict, rules: list[dict]) -> list[dict]:
 
     Returns list of results with: rule, passed, actual, expected, message, suggestion.
     """
-    results = []
+    results: list[dict] = []
     for rule in rules:
         try:
             var, op, expected = parse_check(rule["check"])
@@ -78,7 +81,10 @@ def check_all(data: dict, rules: list[dict]) -> list[dict]:
         suggestion = ""
         if not passed and actual is not None:
             diff = abs(actual - expected)
-            suggestion = f"Encontrado: {actual:.2f} | Exigido: {expected:.2f} | Ajuste necessário: {diff:.2f}"
+            suggestion = (
+                f"Encontrado: {actual:.2f} | Exigido: {expected:.2f} "
+                f"| Ajuste necessário: {diff:.2f}"
+            )
 
         results.append(
             {
@@ -94,7 +100,7 @@ def check_all(data: dict, rules: list[dict]) -> list[dict]:
     return results
 
 
-def get_summary(results: list[dict]) -> dict:
+def get_summary(results: list[dict]) -> dict[str, int | float]:
     """Generate summary statistics."""
     total = len(results)
     passed = sum(1 for r in results if r["passed"])
@@ -108,5 +114,5 @@ def get_summary(results: list[dict]) -> dict:
         "passed": passed,
         "failed": failed,
         "unchecked": unchecked,
-        "pass_rate": round(passed / total * 100, 1) if total > 0 else 0,
+        "pass_rate": round(passed / total * PERCENT_MULTIPLIER, 1) if total > 0 else 0,
     }
