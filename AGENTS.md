@@ -7,13 +7,31 @@
 
 ## Pre-push Checklist (OBRIGATÓRIO)
 
-**Nenhum código sobe para o GitHub sem passar por estes 3 gates.**  
+**Nenhum código sobe para o GitHub sem passar por estes 4 gates.**  
 A ordem importa — cada gate desbloqueia o próximo:
+
+### Gate 0: Instalador Audit (ANTES dos demais gates)
+
+**Toda mudança no código precisa de uma verificação de impacto nos instaladores.**
+
+Antes de abrir os outros gates, pergunte-se: "O que eu mudei pode quebrar o `install.sh` ou `install.ps1`?"
+
+| Se você mudou... | Verifique se precisa atualizar... |
+|---|---|
+| `pyproject.toml` (dependências) | `install.sh` / `install.ps1` — `pip install -e .` já cobre, **mas** se adicionou dependência com build nativo (ex: `pymupdf`) verifique se as libs de sistema estão documentadas |
+| Versão mínima do Python | `install.sh:28` e `install.ps1:32` — ambos têm `if major < 3.11` |
+| `config.yaml.example` (novos campos) | `install.sh:95` e `install.ps1:90` — o arquivo é copiado como template, então novos campos já aparecem. Mas se mudou a **estrutura** do config, o wrapper pode precisar ser atualizado |
+| Estrutura de diretórios (novos `data/`, `projects/`, etc.) | `install.sh` / `install.ps1` — verifique se diretórios git-ignorados precisam ser criados pelo instalador |
+| Entry point da CLI (`main.py`, `pyproject.toml [project.scripts]`) | Wrapper em `install.sh:70` e `install.ps1:75` — ambos chamam `python -m cli_civileng.main`. Se o entry point mudar, os wrappers quebram |
+| Variáveis de ambiente usadas pela CLI | Wrapper e instalador — documentar no `--help` e verificar se o wrapper as propaga |
+| `setup.sh` / `setup.bat` | `install.sh` / `install.ps1` — são versões "one-liner" dos setups. Mudanças em um devem ser refletidas no outro |
+| Novo arquivo no repo que o instalador baixa | `.gitignore` — se o arquivo não está no repo, `install.sh` não pode depender dele. Se está no repo e é essencial, verifique se o `--depth 1` do clone pega ele |
+
+**Regra prática:** se você criar/renomear/remover qualquer arquivo na raiz do projeto ou em `cli_civileng/`, passe 30 segundos olhando `install.sh` e `install.ps1` para ver se algo quebrou.
 
 ### Gate 1: Code Review (claudecode-code-reviewer)
 
 ```bash
-# Roda o quality checker em todos os módulos Python
 python3 ~/.hermes/skills/claude-skills/engineering-team/code-reviewer/scripts/code_quality_checker.py cli_civileng/ --language python --json
 ```
 
@@ -30,7 +48,6 @@ python3 ~/.hermes/skills/claude-skills/engineering-team/code-reviewer/scripts/co
 ### Gate 2: Security Review (claudecode-senior-security)
 
 ```bash
-# Varredura de secrets + threat model
 python3 ~/.hermes/skills/claude-skills/engineering-team/senior-security/scripts/secret_scanner.py . --format json --severity high
 ```
 
@@ -114,10 +131,11 @@ python3 -m pytest tests/ -v  # confirma que tudo passa antes de mexer
 
 ### 3. Antes do commit
 
-1. Rode o **Gate 1** (code-review). Resolva tudo ≥ medium.
-2. Rode o **Gate 2** (security scanner). Zero high/critical.
-3. Rode o **Gate 3** (test suite). 100% passando.
-4. Revise o `git diff --staged` — sem arquivos acidentais (`.coverage`, `__pycache__`, etc.)
+1. **Gate 0 (Instalador):** Revise `install.sh` e `install.ps1` — sua mudança quebrou algo neles?
+2. Rode o **Gate 1** (code-review). Resolva tudo ≥ medium.
+3. Rode o **Gate 2** (security scanner). Zero high/critical.
+4. Rode o **Gate 3** (test suite). 100% passando.
+5. Revise o `git diff --staged` — sem arquivos acidentais (`.coverage`, `__pycache__`, etc.)
 
 ### 4. Push
 
